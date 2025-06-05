@@ -10,6 +10,9 @@ Esta aplicación es un gestor de tareas que permite crear, visualizar y Completa
 
 ## Ejecución
 
+### Instalar dependecias
+    npm install nuxi
+
 ### Iniciar el Backend
 
     Desde el directorio "BackendGo"

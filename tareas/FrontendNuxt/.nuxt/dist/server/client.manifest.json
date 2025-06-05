@@ -7,12 +7,12 @@
     "module": true,
     "resourceType": "script"
   },
-  "C:/Users/baeza/Downloads/tareas/FrontendNuxt/node_modules/nuxt/dist/app/entry.js": {
+  "C:/Users/baeza/OneDrive/Documentos/GitHub/Task-Manager/tareas/FrontendNuxt/node_modules/nuxt/dist/app/entry.js": {
     "resourceType": "script",
     "module": true,
     "prefetch": true,
     "preload": true,
     "isEntry": true,
-    "file": "C:/Users/baeza/Downloads/tareas/FrontendNuxt/node_modules/nuxt/dist/app/entry.js"
+    "file": "C:/Users/baeza/OneDrive/Documentos/GitHub/Task-Manager/tareas/FrontendNuxt/node_modules/nuxt/dist/app/entry.js"
   }
 }
