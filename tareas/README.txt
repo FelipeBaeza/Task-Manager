@@ -21,5 +21,6 @@ Esta aplicación es un gestor de tareas que permite crear, visualizar y Completa
 ### Iniciar el Frontend
 
     Desde el directorio "FrontendNuxt"
+    npm ci
     npm run dev
 
