@@ -26,6 +26,7 @@ func main() {
 
     // Registrar rutas
     routes.RegisterRoutes(r)
+    routes.RoutesAuth(r)
 
     r.Run(":8080")
 }

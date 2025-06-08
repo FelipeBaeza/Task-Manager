@@ -32,7 +32,6 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
-import axios from 'axios'
 import TaskCard from '~/components/TaskCard.vue'
 
 const tasks = ref([])
@@ -41,8 +40,8 @@ const loading = ref(true)
 // Description: Method to get all tasks
 const loadTask = async () => {
   try {
-    const response = await axios.get('http://localhost:8080/tasks')
-    tasks.value = response.data
+    const data = await $fetch('http://localhost:8080/tasks')
+    tasks.value = data
   } catch (error) {
     console.error('Error al cargar tareas:', error)
   } finally {
@@ -58,7 +57,9 @@ const createTasks = () => {
 // Description: Method to complete a task
 const completeTask = async (id) => {
   try {
-    await axios.put(`http://localhost:8080/tasks/${id}/complete`)
+    await $fetch(`http://localhost:8080/tasks/${id}/complete`, {
+      method: 'PUT'
+    })
     const tarea = tasks.value.find((t) => t.id === id)
     if (tarea) tarea.completed = true
   } catch (error) {
