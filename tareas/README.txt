@@ -16,11 +16,12 @@ Esta aplicación es un gestor de tareas que permite crear, visualizar y Completa
 ### Iniciar el Backend
 
     Desde el directorio "BackendGo"
-    go run main.go
+    go run .
 
 ### Iniciar el Frontend
 
     Desde el directorio "FrontendNuxt"
     npm ci
+    npm install axios
     npm run dev
 
