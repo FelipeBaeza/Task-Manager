@@ -20,7 +20,8 @@ func getTasksCollection(c *gin.Context) *mongo.Collection {
 
 // ------------------- Task Controller Functions -------------------
 
-// CreateTask creates a new task
+
+// It validates the input data, sets default values, and assigns the task to the authenticated user
 func CreateTask(c *gin.Context) {
 	var task models.Task
 	if err := c.ShouldBindJSON(&task); err != nil {
@@ -39,10 +40,16 @@ func CreateTask(c *gin.Context) {
 		return
 	}
 
-	if task.CreatedBy.IsZero() {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "CreatedBy is required"})
+	// Get the authenticated user ID from middleware
+	userID := c.MustGet("userID").(string)
+	userObjectID, err := primitive.ObjectIDFromHex(userID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
 		return
 	}
+
+	// Automatically assign createdBy to the authenticated user
+	task.CreatedBy = userObjectID
 
 	collection := getTasksCollection(c)
 	if collection == nil {
@@ -58,7 +65,7 @@ func CreateTask(c *gin.Context) {
 		task.Priority = "media"
 	}
 
-	// Validate status and priority - CORREGIDO AQUÍ
+	// Validate status and priority
 	if task.Status != "pendiente" && task.Status != "en_progreso" && task.Status != "completada" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid status. Valid values: pendiente, en_progreso, completada"})
 		return
@@ -75,7 +82,7 @@ func CreateTask(c *gin.Context) {
 	task.CreatedAt = now
 	task.UpdatedAt = now
 
-	_, err := collection.InsertOne(context.TODO(), task)
+	_, err = collection.InsertOne(context.TODO(), task)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create task"})
 		return
@@ -92,8 +99,17 @@ func GetTasks(c *gin.Context) {
 		return
 	}
 
+	userID := c.MustGet("userID").(string)
+	userObjectID, err := primitive.ObjectIDFromHex(userID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
 	// Build filter based on query parameters
-	filter := bson.M{}
+	filter := bson.M{
+		"createdBy": userObjectID, 
+	}
 
 	// Filter by status if provided
 	if status := c.Query("status"); status != "" {
@@ -107,7 +123,6 @@ func GetTasks(c *gin.Context) {
 
 	// Filter by priority if provided
 	if priority := c.Query("priority"); priority != "" {
-		// Validate priority values
 		if priority != "baja" && priority != "media" && priority != "alta" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid priority. Valid values: baja, media, alta"})
 			return
@@ -125,16 +140,6 @@ func GetTasks(c *gin.Context) {
 		filter["assignedTo"] = assignedToID
 	}
 
-	// Filter by createdBy if provided
-	if createdBy := c.Query("createdBy"); createdBy != "" {
-		createdByID, err := primitive.ObjectIDFromHex(createdBy)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid createdBy ID"})
-			return
-		}
-		filter["createdBy"] = createdByID
-	}
-
 	// Find tasks with filter
 	cursor, err := collection.Find(context.TODO(), filter)
 	if err != nil {
@@ -143,14 +148,12 @@ func GetTasks(c *gin.Context) {
 	}
 	defer cursor.Close(context.TODO())
 
-	// Convert cursor to slice of tasks
 	var tasks []models.Task
 	if err := cursor.All(context.TODO(), &tasks); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to decode tasks"})
 		return
 	}
 
-	// Return empty array if no tasks found instead of null
 	if tasks == nil {
 		tasks = []models.Task{}
 	}
@@ -158,6 +161,7 @@ func GetTasks(c *gin.Context) {
 	c.JSON(http.StatusOK, tasks)
 }
 
+// GetTaskByID retrieves a single task by its ID
 func GetTaskByID(c *gin.Context) {
 	var task models.Task
 	taskID, err := primitive.ObjectIDFromHex(c.Param("id"))
@@ -190,20 +194,34 @@ func DeleteTask(c *gin.Context) {
 		return
 	}
 
+	// Get the authenticated user ID
+	userID := c.MustGet("userID").(string)
+	userObjectID, err := primitive.ObjectIDFromHex(userID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
 	collection := getTasksCollection(c)
 	if collection == nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to connect to tasks collection"})
 		return
 	}
 
-	result, err := collection.DeleteOne(context.TODO(), bson.M{"_id": taskID})
+	// Filter by taskID AND createdBy to ensure only own tasks are deleted
+	filter := bson.M{
+		"_id":       taskID,
+		"createdBy": userObjectID,
+	}
+
+	result, err := collection.DeleteOne(context.TODO(), filter)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete task"})
 		return
 	}
 
 	if result.DeletedCount == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Task not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": "Task not found or you don't have permission to delete it"})
 		return
 	}
 
@@ -215,6 +233,14 @@ func UpdateTaskStatus(c *gin.Context) {
 	taskID, err := primitive.ObjectIDFromHex(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid task ID"})
+		return
+	}
+
+	// Get the authenticated user ID
+	userID := c.MustGet("userID").(string)
+	userObjectID, err := primitive.ObjectIDFromHex(userID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
 		return
 	}
 
@@ -240,7 +266,7 @@ func UpdateTaskStatus(c *gin.Context) {
 		return
 	}
 
-	// Update task status and updatedAt
+	// Update task status and updatedAt - Only if the task belongs to the authenticated user
 	update := bson.M{
 		"$set": bson.M{
 			"status":    requestBody.Status,
@@ -248,7 +274,13 @@ func UpdateTaskStatus(c *gin.Context) {
 		},
 	}
 
-	result, err := collection.UpdateOne(context.TODO(), bson.M{"_id": taskID}, update)
+	// Filter by taskID AND createdBy to ensure only own tasks are updated
+	filter := bson.M{
+		"_id":       taskID,
+		"createdBy": userObjectID,
+	}
+
+	result, err := collection.UpdateOne(context.TODO(), filter, update)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update task"})
 		return
@@ -256,7 +288,7 @@ func UpdateTaskStatus(c *gin.Context) {
 
 	// Check if task was found and updated
 	if result.MatchedCount == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Task not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": "Task not found or you don't have permission to update it"})
 		return
 	}
 

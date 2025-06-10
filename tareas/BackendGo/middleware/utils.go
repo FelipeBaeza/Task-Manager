@@ -8,6 +8,7 @@ import (
 
 var jwtSecret = []byte("contraseña_secreta_para_este_ejemplo")
 
+// GenerateToken creates a JWT token for the given user ID with a 5-minute expiration time
 func GenerateToken(userID string) (string, error) {
     token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
         "userID": userID,

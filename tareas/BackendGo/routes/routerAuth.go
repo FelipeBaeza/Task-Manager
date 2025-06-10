@@ -2,17 +2,17 @@ package routes
 
 import (
 	"go-template/controllers"
-	"github.com/gin-gonic/gin"
 	"go-template/middleware"
+
+	"github.com/gin-gonic/gin"
 )
 
 func RoutesAuth(router *gin.Engine) {
-	// Rutas públicas (sin middleware)
+
 	router.POST("/auth/register", controllers.CreateUser)
 	router.POST("/auth/login", controllers.LoginUser)
 
-	// Rutas protegidas (con middleware de autenticación)
+	// Protected routes
 	router.GET("/user/me", middleware.AuthMiddleware(), controllers.UserMe)
-
-
+	router.GET("/users", middleware.AuthMiddleware(), controllers.GetAllUsers)
 }

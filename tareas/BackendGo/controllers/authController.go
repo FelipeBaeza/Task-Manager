@@ -11,6 +11,8 @@ import (
 
 )
 
+
+// CreateUser handles user registration by creating a new user account
 func CreateUser(c *gin.Context){
 	var user models.User
 	if err := c.ShouldBindJSON(&user); err != nil {
@@ -37,7 +39,6 @@ func CreateUser(c *gin.Context){
 		c.JSON(http.StatusConflict, gin.H{"error": "User already exists"})
 		return
 	}
-	// If the error is not ErrNoDocuments, it means there was an error other than not finding the user
 	if err != mongo.ErrNoDocuments {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error checking existing user"})
 		return
@@ -52,6 +53,7 @@ func CreateUser(c *gin.Context){
 
 }
 
+// LoginUser handles user authentication by validating credentials
 func LoginUser(c *gin.Context) {
 	// Define the request structure DTO
 	type LoginRequest struct {

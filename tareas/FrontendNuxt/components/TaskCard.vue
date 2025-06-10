@@ -1,21 +1,67 @@
 <template>
   <div class="task-card">
-    <h3>{{ task.title }}</h3>
-    <p>{{ task.description || 'Sin descripción' }}</p>
-    <p class="date">Creada: {{ formatDate(task.created_at) }}</p>
+    <div class="task-header">
+      <h3 @click="viewTask" class="task-title">{{ task.title }}</h3>
+      <div class="badges">
+        <span :class="getStatusClass(task.status)">
+          {{ getStatusText(task.status) }}
+        </span>
+        <span :class="getPriorityClass(task.priority)">
+          {{ getPriorityText(task.priority) }}
+        </span>
+      </div>
+    </div>
     
-    <div class="footer">
-      <span :class="task.completed ? 'completed' : 'pending'">
-        {{ task.completed ? 'Completada' : 'Pendiente' }}
-      </span>
-      
-      <button 
-        v-if="!task.completed"
-        @click="$emit('complete', task.id)"
-        class="btn"
-      >
-        Completar
-      </button>
+    <p>{{ task.description || 'Sin descripción' }}</p>
+    
+    <div class="dates">
+      <p class="date">Creada: {{ formatDate(task.createdAt) }}</p>
+      <p v-if="task.updatedAt && task.updatedAt !== task.createdAt" class="date">
+        Actualizada: {{ formatDate(task.updatedAt) }}
+      </p>
+    </div>
+    
+    <div class="actions">
+      <div class="status-buttons">
+        <button 
+          @click="viewTask"
+          class="btn btn-info"
+        >
+          Ver Detalles
+        </button>
+        
+        <button 
+          v-if="task.status === 'pendiente'"
+          @click="updateStatus('en_progreso')"
+          class="btn btn-warning"
+        >
+          Iniciar
+        </button>
+        
+        <button 
+          v-if="task.status === 'en_progreso'"
+          @click="updateStatus('completada')"
+          class="btn btn-success"
+        >
+          Completar
+        </button>
+        
+        <button 
+          v-if="task.status === 'completada'"
+          @click="updateStatus('pendiente')"
+          class="btn btn-secondary"
+        >
+          Reabrir
+        </button>
+        
+        <button 
+          v-if="task.status === 'completada'"
+          @click="deleteTask"
+          class="btn btn-danger"
+        >
+          Eliminar
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -28,10 +74,72 @@ const props = defineProps({
   }
 })
 
-defineEmits(['complete'])
+const emit = defineEmits(['updateStatus', 'deleteTask'])
 
-const formatDate = (iso) => {
-  return new Date(iso).toLocaleDateString('es-ES')
+// Description: Function to format date to a readable string
+const formatDate = (dateTime) => {
+  if (!dateTime) return 'N/A'
+  let date
+  if (typeof dateTime === 'object' && dateTime.$date) {
+    date = new Date(dateTime.$date)
+  } else {
+    date = new Date(dateTime)
+  }
+  
+  return date.toLocaleDateString('es-ES', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
+//Description: Function to navigate to task details
+const getStatusText = (status) => {
+  const statusMap = {
+    'pendiente': 'Pendiente',
+    'en_progreso': 'En Progreso',
+    'completada': 'Completada'
+  }
+  return statusMap[status] || status
+}
+
+// Description: Function to get status class based on task status
+const getStatusClass = (status) => {
+  return `status status-${status}`
+}
+
+// Description: Function to get priority text based on task priority
+const getPriorityText = (priority) => {
+  const priorityMap = {
+    'alta': 'Alta',
+    'media': 'Media',
+    'baja': 'Baja'
+  }
+  return priorityMap[priority] || priority
+}
+
+// Description: Function to get priority class based on task priority
+const getPriorityClass = (priority) => {
+  return `priority priority-${priority}`
+}
+
+// Description: Function to update task status
+const updateStatus = (newStatus) => {
+  emit('updateStatus', props.task.id, newStatus)
+}
+
+// Description: Function to delete task
+const deleteTask = () => {
+  if (confirm('¿Estás seguro de que quieres eliminar esta tarea? Esta acción no se puede deshacer.')) {
+    emit('deleteTask', props.task.id)
+  }
+}
+
+// Description: Function to navigate to task details page
+const viewTask = () => {
+  navigateTo(`/taskInfo?id=${props.task.id}`)
 }
 </script>
 
@@ -50,10 +158,71 @@ const formatDate = (iso) => {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
-.task-card h3 {
-  margin: 0 0 10px 0;
+.task-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 15px;
+}
+
+.task-title {
+  margin: 0;
   color: #333;
   font-size: 1.2em;
+  flex: 1;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.task-title:hover {
+  color: #007bff;
+  text-decoration: underline;
+}
+
+.badges {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  align-items: flex-end;
+}
+
+.status, .priority {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.8em;
+  font-weight: bold;
+  text-align: center;
+  min-width: 80px;
+}
+
+.status-pendiente {
+  background: rgba(255, 193, 7, 0.2);
+  color: #856404;
+}
+
+.status-en_progreso {
+  background: rgba(0, 123, 255, 0.2);
+  color: #004085;
+}
+
+.status-completada {
+  background: rgba(40, 167, 69, 0.2);
+  color: #155724;
+}
+
+.priority-alta {
+  background: rgba(220, 53, 69, 0.2);
+  color: #721c24;
+}
+
+.priority-media {
+  background: rgba(255, 193, 7, 0.2);
+  color: #856404;
+}
+
+.priority-baja {
+  background: rgba(108, 117, 125, 0.2);
+  color: #495057;
 }
 
 .task-card p {
@@ -62,49 +231,81 @@ const formatDate = (iso) => {
   line-height: 1.4;
 }
 
+.dates {
+  margin: 10px 0;
+}
+
 .date {
   font-size: 0.85em;
   color: #888;
   font-style: italic;
+  margin: 2px 0;
 }
 
-.footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.actions {
   margin-top: 15px;
   padding-top: 15px;
   border-top: 1px solid #f0f0f0;
 }
 
-.completed {
-  color: #28a745;
-  font-weight: bold;
-  background: rgba(40, 167, 69, 0.1);
-  padding: 4px 8px;
-  border-radius: 4px;
-}
-
-.pending {
-  color: #ffc107;
-  font-weight: bold;
-  background: rgba(255, 193, 7, 0.1);
-  padding: 4px 8px;
-  border-radius: 4px;
+.status-buttons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .btn {
-  background-color: #007bff;
-  color: white;
   border: none;
   padding: 8px 16px;
   border-radius: 5px;
   cursor: pointer;
   font-size: 0.9em;
   transition: background-color 0.2s ease;
+  font-weight: 500;
 }
 
-.btn:hover {
-  background-color: #0056b3;
+.btn-info {
+  background-color: #17a2b8;
+  color: white;
+}
+
+.btn-info:hover {
+  background-color: #138496;
+}
+
+.btn-warning {
+  background-color: #ffc107;
+  color: #212529;
+}
+
+.btn-warning:hover {
+  background-color: #e0a800;
+}
+
+.btn-success {
+  background-color: #28a745;
+  color: white;
+}
+
+.btn-success:hover {
+  background-color: #218838;
+}
+
+.btn-secondary {
+  background-color: #6c757d;
+  color: white;
+}
+
+.btn-secondary:hover {
+  background-color: #5a6268;
+}
+
+.btn-danger {
+  background-color: #dc3545;
+  color: white;
+}
+
+.btn-danger:hover {
+  background-color: #c82333;
 }
 </style>
