@@ -1,7 +1,7 @@
 <template>
   <div class="task-card">
     <div class="task-header">
-      <h3 @click="viewTask" class="task-title">{{ task.title }}</h3>
+      <h3 class="task-title">{{ task.title }}</h3>
       <div class="badges">
         <span :class="getStatusClass(task.status)">
           {{ getStatusText(task.status) }}
@@ -170,13 +170,7 @@ const viewTask = () => {
   color: #333;
   font-size: 1.2em;
   flex: 1;
-  cursor: pointer;
-  transition: color 0.2s ease;
-}
-
-.task-title:hover {
-  color: #007bff;
-  text-decoration: underline;
+  font-weight: 600;
 }
 
 .badges {
